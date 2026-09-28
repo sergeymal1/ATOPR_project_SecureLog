@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SecureLog.App/SecureLog.App.csproj" />
+    <Project Path="src/SecureLog.Compression/SecureLog.Compression.csproj" />
+    <Project Path="src/SecureLog.Core/SecureLog.Core.csproj" />
+    <Project Path="src/SecureLog.DP/SecureLog.DP.csproj" />
+    <Project Path="src/SecureLog.ML/SecureLog.ML.csproj" />
+    <Project Path="src/SecureLog.Security/SecureLog.Security.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SecureLog.Tests.C1/SecureLog.Tests.C1.csproj" />
+    <Project Path="tests/SecureLog.Tests.D1/SecureLog.Tests.D1.csproj" />
+    <Project Path="tests/SecureLog.Tests.Unit/SecureLog.Tests.Unit.csproj" />
+  </Folder>
+</Solution>
