@@ -1,5 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <ItemGroup>
+    <ProjectReference Include="..\SecureLog.Core\SecureLog.Core.csproj" />
+    <ProjectReference Include="..\SecureLog.Compression\SecureLog.Compression.csproj" />
+    <ProjectReference Include="..\SecureLog.DP\SecureLog.DP.csproj" />
+    <ProjectReference Include="..\SecureLog.ML\SecureLog.ML.csproj" />
+    <ProjectReference Include="..\SecureLog.Security\SecureLog.Security.csproj" />
+  </ItemGroup>
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
