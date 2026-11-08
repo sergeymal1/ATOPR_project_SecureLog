@@ -1,0 +1,12 @@
+{
+  "password": "reference-password",
+  "files": {
+    "bad_01_short.bin": "E_SHORT",
+    "bad_02_magic.bin": "E_MAGIC",
+    "bad_03_length.bin": "E_LENGTH",
+    "bad_04_hmac.bin": "E_HMAC",
+    "bad_05_payload.bin": "E_PAYLOAD",
+    "bad_06_kraft.bin": "E_CODE",
+    "bad_07_extra_bitstream.bin": "E_CODE"
+  }
+}
