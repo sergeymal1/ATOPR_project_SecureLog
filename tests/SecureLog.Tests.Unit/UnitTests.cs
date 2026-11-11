@@ -2,6 +2,7 @@ using SecureLog.App;
 using SecureLog.Compression;
 using SecureLog.Core;
 using SecureLog.DP;
+using SecureLog.ML;
 using SecureLog.Security;
 
 namespace SecureLog.Tests.Unit;
@@ -167,5 +168,20 @@ public class UnitTests
         }
         for (int i = 0; i < n; i++) Assert.True(batches.Count(b => b.Contains(i)) <= copies[i]);
         Assert.True(batches.Sum(b => b.Count) > 0);
+    }
+
+    [Fact]
+    public void Mlp_LearnsXor()
+    {
+        // XOR не розділяється лінійно: без прихованого шару і правильного backpropagation його не вивчити
+        var rng = new Random(4);
+        double[][] x = Enumerable.Range(0, 200).Select(i => new[] { i % 2 + 0.1 * rng.NextDouble(), i / 2 % 2 + 0.1 * rng.NextDouble() }).ToArray();
+        int[] y = Enumerable.Range(0, 200).Select(i => i % 2 ^ (i / 2 % 2)).ToArray();
+
+        var (model, f1) = Mlp.TrainBest(x, y, x, y, hidden: [8], seeds: 3, epochs: 400);
+
+        Assert.Equal(1.0, f1, 6);
+        Assert.Equal(0, model.Predict([0, 0]));
+        Assert.Equal(1, model.Predict([1, 0]));
     }
 }
