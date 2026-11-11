@@ -1,6 +1,7 @@
 using SecureLog.App;
 using SecureLog.Compression;
 using SecureLog.Core;
+using SecureLog.DP;
 using SecureLog.Security;
 
 namespace SecureLog.Tests.Unit;
@@ -106,5 +107,65 @@ public class UnitTests
         var freq = new int[256];
         foreach (byte b in data) freq[b]++;
         return Huffman.CodeLengths(freq);
+    }
+
+    [Fact]
+    public void Knapsack_GreedyCounterExample()
+    {
+        // бюджет 10: жадібний бере A (7/6 — найкраще відношення) і більше нічого не вміщується; оптимум — B + C
+        int[] cost = [6, 5, 5];
+        double[][] utility = [[0, 7], [0, 5], [0, 5]];
+        Assert.Equal(7, Knapsack.Utility(utility, Knapsack.SolveGreedy(cost, utility, 10)));
+        Assert.Equal(10, Knapsack.Utility(utility, Knapsack.SolveDp(cost, utility, 10)));
+    }
+
+    [Fact]
+    public void Knapsack_DpMatchesBruteForce()
+    {
+        var rng = new Random(2);
+        for (int trial = 0; trial < 200; trial++)
+        {
+            int n = rng.Next(1, 7), budget = rng.Next(0, 40);
+            int[] cost = Enumerable.Range(0, n).Select(_ => rng.Next(1, 12)).ToArray();
+            // корисність зі зменшуваною віддачею v·(1, 1+k, 1+k+k²) мінус ціна зберігання: у системі ціни немає,
+            // але з нею прирости бувають від'ємними, і ДП має вміти взяти менше копій, ніж дозволяє бюджет
+            double[][] utility = cost.Select(c =>
+            {
+                double v = rng.Next(1, 30), k = rng.NextDouble(), price = rng.NextDouble();
+                return new[] { 0, v - price * c, v * (1 + k) - 2 * price * c, v * (1 + k + k * k) - 3 * price * c };
+            }).ToArray();
+
+            double best = 0;
+            for (int mask = 0; mask < 1 << (2 * n); mask++)
+            {
+                int[] copies = Enumerable.Range(0, n).Select(i => (mask >> (2 * i)) & 3).ToArray();
+                if (Knapsack.Cost(cost, copies) <= budget) best = Math.Max(best, Knapsack.Utility(utility, copies));
+            }
+
+            int[] dp = Knapsack.SolveDp(cost, utility, budget);
+            Assert.True(Knapsack.Cost(cost, dp) <= budget);
+            Assert.Equal(best, Knapsack.Utility(utility, dp), 9);
+        }
+    }
+
+    [Fact]
+    public void Placement_PutsCopiesOnDistinctNodesWithinRoom()
+    {
+        var rng = new Random(3);
+        int n = 200;
+        int[] copies = Enumerable.Range(0, n).Select(_ => rng.Next(0, 4)).ToArray();
+        int[] cost = Enumerable.Range(0, n).Select(_ => rng.Next(8, 20)).ToArray();
+        double[] value = Enumerable.Range(0, n).Select(_ => (double)rng.Next(1, 30)).ToArray();
+        long[] room = [1500, 1500, 900];
+
+        List<int>[] batches = Placement.Assign(copies, cost, value, [0.95, 0.9, 0.8], room);
+
+        for (int k = 0; k < 3; k++)
+        {
+            Assert.Equal(batches[k].Count, batches[k].Distinct().Count());
+            Assert.True(batches[k].Sum(i => cost[i]) <= room[k]);
+        }
+        for (int i = 0; i < n; i++) Assert.True(batches.Count(b => b.Contains(i)) <= copies[i]);
+        Assert.True(batches.Sum(b => b.Count) > 0);
     }
 }
