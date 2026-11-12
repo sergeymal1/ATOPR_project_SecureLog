@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SecureLog — консоль реплікації</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 4 6v5.6c0 4.7 3.3 8.9 8 9.9 4.7-1 8-5.2 8-9.9V6l-8-3.5z"/><path d="M8.5 12.2l2.4 2.4 4.6-4.8"/></svg>
+      <div><b>SecureLog</b><span>пріоритетна захищена реплікація журналів</span></div>
+    </div>
+    <div class="controls">
+      <div class="seg" id="scenario" role="group" aria-label="Сценарій">
+        <button data-v="normal" class="on">normal</button>
+        <button data-v="degraded">degraded</button>
+        <button data-v="emergency">emergency</button>
+      </div>
+      <label class="field">seed <input id="seed" type="number" value="21" min="0"></label>
+      <label class="field">швидкість
+        <select id="speed">
+          <option value="3">1×</option>
+          <option value="12" selected>4×</option>
+          <option value="48">16×</option>
+          <option value="0">одразу</option>
+        </select>
+      </label>
+      <button id="run" class="primary">▶ Запустити</button>
+    </div>
+  </header>
+
+  <p class="note" id="note">Завантаження…</p>
+
+  <section class="kpis">
+    <div class="kpi main"><span>Q · підсумок</span><b id="kQ">—</b><small>0.2·S + 0.7·R + 0.1·T</small></div>
+    <div class="kpi"><span>S · обсяг</span><b id="kS">—</b><small id="kSsub">після відновлення</small></div>
+    <div class="kpi"><span>R · критичні</span><b id="kR">—</b><small id="kRsub">після відновлення</small></div>
+    <div class="kpi"><span>T · час</span><b id="kT">—</b><small id="kTsub">після відновлення</small></div>
+    <div class="kpi"><span>Подій оброблено</span><b id="kN">0</b><small id="kNsub">&nbsp;</small></div>
+    <div class="kpi"><span>Надіслано на вузли</span><b id="kB">0 КБ</b><small id="kBsub">&nbsp;</small></div>
+  </section>
+
+  <main class="grid">
+    <section class="panel stream">
+      <div class="panel-head">
+        <h2>Потік подій</h2>
+        <div class="chips" id="filters" role="group" aria-label="Фільтр">
+          <button data-f="all" class="on">усі</button>
+          <button data-f="important">важливі</button>
+          <button data-f="crit">критичні</button>
+          <button data-f="lost">втрачені</button>
+        </div>
+        <span class="muted small" id="shown"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>час</th><th>хост</th><th>подія</th><th>рівень</th><th class="num">метрика</th><th>перцептрон</th><th>копії</th><th>стан</th></tr>
+          </thead>
+          <tbody id="rows"><tr><td colspan="8" class="empty">Оберіть сценарій і натисніть «Запустити».</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="panel">
+        <div class="panel-head"><h2>Вузли зберігання</h2></div>
+        <div class="nodes" id="nodes"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Вікно реплікації</h2><span class="muted small" id="winLabel"></span></div>
+        <div class="window" id="window"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Відновлення</h2></div>
+        <div class="restore">
+          <input id="password" type="password" placeholder="пароль (порожньо — як у прогоні)" autocomplete="off" aria-label="Пароль відновлювача">
+          <button id="restore" disabled>Відновити</button>
+        </div>
+        <ol class="journal" id="journal"></ol>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Атака на слабкий шифр</h2></div>
+        <p class="muted small">XOR із ключем 7 байтів. ГА підбирає ключ лише за шифротекстом і частотами байтів train.csv.</p>
+        <button id="attack">Запустити атаку</button>
+        <div id="attackOut"></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer>Дані синтетичні (data/session.csv). Імена хостів і категорій — підписи до source_id і category для наочності. Вузли й втрати — власна модель SimReplication. Сторінка відтворює вже виконаний прогін вікно за вікном.</footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
