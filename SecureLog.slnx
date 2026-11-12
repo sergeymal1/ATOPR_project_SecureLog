@@ -6,6 +6,7 @@
     <Project Path="src/SecureLog.DP/SecureLog.DP.csproj" />
     <Project Path="src/SecureLog.ML/SecureLog.ML.csproj" />
     <Project Path="src/SecureLog.Security/SecureLog.Security.csproj" />
+    <Project Path="src/SecureLog.Web/SecureLog.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/SecureLog.Tests.C1/SecureLog.Tests.C1.csproj" />
