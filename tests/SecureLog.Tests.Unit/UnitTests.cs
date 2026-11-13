@@ -184,4 +184,18 @@ public class UnitTests
         Assert.Equal(0, model.Predict([0, 0]));
         Assert.Equal(1, model.Predict([1, 0]));
     }
+
+    [Fact]
+    public void Attack_GaRecoversWeakCipherKey()
+    {
+        byte[] training = EventCodec.Encode(Gen.Events(3000, 6).Events);
+        byte[] plain = EventCodec.Encode(Gen.Events(1000, 5).Events);
+        // довжина ключа взаємно проста з розміром запису (16): так кожен байт ключа зустрічає всі поля запису
+        byte[] key = [0x3A, 0xC1, 0x07, 0xEE, 0x52, 0x99, 0x10];
+
+        var result = Attack.RecoverKey(WeakCipher.Apply(plain, key), training, key.Length);
+
+        Assert.Equal(key, result.Best);
+        Assert.True(result.History[^1] >= result.History[0]);
+    }
 }
