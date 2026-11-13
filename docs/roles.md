@@ -37,3 +37,20 @@
 ### D — Security + Integration
 - Задачі: T1.1, T1.2, T1.5, T4.1, T4.2, T5.1–T5.6, T6.1–T6.6
 - Файли: `src/SecureLog.Security/`, `src/SecureLog.App/`, `src/SecureLog.Core/`
+## Що де реалізовано і що питатимуть на захисті
+
+### A — Compression & Format
+- `Huffman.cs` — дерево через чергу з пріоритетами, канонічні коди, кодер і декодер; `Payload.cs` — навантаження репліки, вибір NO_COMPRESSION і строгий розбір; `BitIO.cs`; `EventCodec.cs` — CSV і двійковий запис.
+- Питання: чому код Гаффмана оптимальний серед префіксних; як відновити коди лише з довжин (`bl_count`, `next_code`); що означає сума Крафта = 1; що робити з алфавітом з одного символа; чому шифротекст не стискається.
+
+### B — DP & Replication
+- `Knapsack.cs` — ДП і жадібний baseline; `Placement.cs` — порядок реплікації; `SimReplication.cs` — модель вузлів.
+- Питання: рекурентне співвідношення і складність O(n·W·R); контрприклад для жадібного (тест `Knapsack_GreedyCounterExample`); що зміниться, якщо один вузол стане вдвічі менш надійним або бюджет зменшиться на 30 %.
+
+### C — ML & GA
+- `Features.cs` — ознаки з вікном історії; `Mlp.cs` — прямий прохід, backpropagation, Adam, macro-F1; `Ga.cs` — ГА і випадковий пошук.
+- Питання: які ознаки відрізняють клас 2 і чому миттєвих замало; звідки `p − onehot` у вихідному шарі; роль елітизму; як додати новий клас подій.
+
+### D — Security + Integration
+- `Crypto.cs`, `Log3.cs`, `WeakCipher.cs`; `Pipeline.cs`, `Replica.cs` (тут же відновлювач), `Tuning.cs`, `Attack.cs`, `Report.cs`, `Program.cs`; вебконсоль `src/SecureLog.Web/` (`Program.cs` — API над тим самим конвеєром, `wwwroot/` — сторінка; дані вікон приходять через `RunOptions.OnWindow`).
+- Питання: чому Encrypt-then-MAC; що буде, якщо nonce повториться; навіщо два різні ключі; як кількість копій і бюджет впливають на S, R і Q.
