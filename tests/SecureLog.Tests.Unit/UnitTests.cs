@@ -171,6 +171,37 @@ public class UnitTests
     }
 
     [Fact]
+    public void PyRandom_MatchesPython()
+    {
+        // значення надруковано Python 3 з replication.py: _node_seed(427243, "A") і перші три random.Random(...).random()
+        ulong seed = Replication.NodeSeed(427243, "A");
+        Assert.Equal(2442669452478512891UL, seed);
+        var rng = new PyRandom(seed);
+        Assert.Equal(0.35212687917463037, rng.NextDouble());
+        Assert.Equal(0.3228960588590014, rng.NextDouble());
+        Assert.Equal(0.7632280240017555, rng.NextDouble());
+    }
+
+    [Theory]   // очікуване — вивід replication.py на тих самих 600 операціях; S збережено, F втрачено у BAD, R відхилено
+    [InlineData("normal", "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS", 354, 1, 245, 42172)]
+    [InlineData("degraded", "SSSSFSSFSSSSSSSSSSSSSSFSSFSSSSSSSFSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSFSSSFSFSSSSSFSSFSSFSSFSSFSFSSSSSFSSSSSSSSSSSSSSSS", 221, 23, 356, 28755)]
+    [InlineData("emergency", "SSSSFSSFSSSSSSSSSSSSSSFSSFSSSSFSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSFSSFSSSSSFSSFSSFSFSFSSFSSFSSSSSSSSFSFFSSFSFSSFSSFSSFSSSSSSSSSSSSSS", 144, 27, 429, 20132)]
+    public void Replication_MatchesReplicationPy(string scenario, string prefix, int stored, int failed, int rejected, long used)
+    {
+        var model = new Replication(Workspace.Config(), scenario, 427243);
+        var outcome = new System.Text.StringBuilder();
+        for (int i = 0; i < 600; i++)
+        {
+            long before = model.UsedBytes;
+            bool ok = model.Write(i % 3, new byte[40 + i * 37 % 160]);
+            outcome.Append(ok ? 'S' : model.UsedBytes > before ? 'F' : 'R');
+        }
+        string o = outcome.ToString();
+        Assert.Equal(prefix, o[..150]);
+        Assert.Equal((stored, failed, rejected, used), (o.Count(c => c == 'S'), o.Count(c => c == 'F'), o.Count(c => c == 'R'), model.UsedBytes));
+    }
+
+    [Fact]
     public void Mlp_LearnsXor()
     {
         // XOR не розділяється лінійно: без прихованого шару і правильного backpropagation його не вивчити
