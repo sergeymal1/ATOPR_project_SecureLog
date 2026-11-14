@@ -99,7 +99,11 @@ public sealed class Pipeline(TeamConfig cfg, Mlp? model, string password)
                     byte[] packet = Replica.Build(keys, salt, (ushort)w, batchSeq, batch, options.P.MinGain);
                     if (packet.Length <= Math.Min(Limit(k), share))
                     {
-                        if (nodes.Write(k, packet))
+                        // false буває і після списання (копію втрачено у стані BAD), тому облік — за фактично списаними байтами.
+                        // Повторно в тому самому вікні на цей вузол не пишемо: не більше одного batch на вузол
+                        long before = nodes.UsedBytes;
+                        nodes.Write(k, packet);
+                        if (nodes.UsedBytes > before)
                         {
                             share -= packet.Length;
                             batchSeq++;
