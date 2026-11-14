@@ -15,4 +15,7 @@ public static class ErrorCode
 public sealed class ReplicaException(string code, string message) : Exception($"{code}: {message}")
 {
     public string Code { get; } = code;
+
+    /// <summary>Пояснення без коду — щоб доповнити його, наприклад, номером репліки у файлі.</summary>
+    public string Detail { get; } = message;
 }
