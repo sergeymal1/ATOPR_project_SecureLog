@@ -17,7 +17,9 @@ public static class Log3
 
     private static ReadOnlySpan<byte> Magic => "LOG3"u8;
 
-    public static byte[] Seal(Keys keys, ReadOnlySpan<byte> salt, ushort groupId, uint batchSeq, ReadOnlySpan<byte> payload)
+    /// <param name="fixedNonce">Лише для звірки з еталонними пакетами, де nonce задано; у системі nonce завжди випадковий.</param>
+    public static byte[] Seal(Keys keys, ReadOnlySpan<byte> salt, ushort groupId, uint batchSeq, ReadOnlySpan<byte> payload,
+        ReadOnlySpan<byte> fixedNonce = default)
     {
         var packet = new byte[Overhead + payload.Length];
         var s = packet.AsSpan();
@@ -28,7 +30,8 @@ public static class Log3
         salt.CopyTo(s[SaltOffset..]);
         // nonce не повинен повторюватися з тим самим ключем: інакше XOR двох шифротекстів дає XOR відкритих текстів
         var nonce = s.Slice(NonceOffset, Crypto.NonceSize);
-        RandomNumberGenerator.Fill(nonce);
+        if (fixedNonce.IsEmpty) RandomNumberGenerator.Fill(nonce);
+        else fixedNonce.CopyTo(nonce);
         BinaryPrimitives.WriteUInt32BigEndian(s[LengthOffset..], (uint)payload.Length);
 
         Crypto.AesCtr(keys.Enc, nonce, payload).CopyTo(s[HeaderSize..]);
