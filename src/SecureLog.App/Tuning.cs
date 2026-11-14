@@ -23,15 +23,17 @@ public static class Tuning
     /// Середній Q за сценаріями і вісьмома seeds: на малій кількості ГА підганяє розмір вікна під випадковий перебіг відмов.
     /// Прогони незалежні, тому рахуються паралельно.
     /// </summary>
-    public static double Fitness(Pipeline pipeline, LogEvent[] events, Params p)
+    public static double Fitness(Pipeline pipeline, TeamConfig cfg, LogEvent[] events, Params p)
     {
         var runs = Scenarios.SelectMany(s => FitnessSeeds.Select(seed => (Scenario: s, Seed: seed))).AsParallel()
             .Select(x => (x.Scenario, Result: pipeline.RunSim(events, x.Scenario, x.Seed, new RunOptions(p)))).ToArray();
 
-        // приймальний кейс C1-7 — жорстка умова, а не доданок Q: у штатному сценарії мають відновитися всі критичні події.
-        // Без неї ГА підіймає коефіцієнт другої копії так, що вона витісняє першу копію іншого критичного запису
-        bool allCritical = runs.Where(r => r.Scenario == "normal").All(r => r.Result.CriticalRestored == r.Result.CriticalTotal);
-        return runs.Average(r => r.Result.Quality.Q) - (allCritical ? 0 : 1);
+        // пороги втрати критичних подій з team_config.json (штатний 0, деградований 0.1, аварійний 0.45) — жорсткі умови,
+        // а не доданок Q: кожен прогін, що їх порушує, знімає 1. Без них ГА збільшує вікно до ~250 записів —
+        // Q росте, бо batch упирається в max_batch_bytes і некритичні події не зберігаються, але тоді на вузол іде
+        // лише 5 batch, і одна пачка відмов забирає чверть журналу
+        int violations = runs.Count(r => 1 - r.Result.Quality.R > cfg.CriticalLossMax[r.Scenario] + 1e-12);
+        return runs.Average(r => r.Result.Quality.Q) - violations;
     }
 
     public static double[] Create(Random rng) => [rng.NextDouble(), rng.NextDouble(), rng.NextDouble()];
@@ -47,7 +49,7 @@ public static class Tuning
     /// <summary>Запускає ГА і випадковий пошук з однаковим числом обчислень; пише журнал збіжності та найкращі параметри.</summary>
     public static void Run(Pipeline pipeline, TeamConfig cfg, LogEvent[] events, int population = 12, int generations = 10)
     {
-        double Fit(double[] g) => Fitness(pipeline, events, Decode(g, cfg));
+        double Fit(double[] g) => Fitness(pipeline, cfg, events, Decode(g, cfg));
         var ga = Ga.Run(Create, Crossover, Mutate, Fit, new Random(1), population, generations);
         var random = Ga.RandomSearch(Create, Fit, new Random(1), population, generations);
 
