@@ -13,6 +13,9 @@ CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;   // десятков
 TeamConfig cfg = Workspace.Config();
 switch (args.FirstOrDefault())
 {
+    case "check":
+        CheckReference();
+        break;
     case "train":
         Train();
         break;
@@ -35,6 +38,7 @@ switch (args.FirstOrDefault())
     default:
         Console.WriteLine("""
             SecureLog — пріоритетна реплікація журналів подій
+              check                   прочитати всі еталонні пакети викладача з reference/
               train                   навчити перцептрон (3 ініціалізації), зберегти data/model.json
               run [сценарій] [seed]   повний прогін: normal | degraded | emergency (без аргументів — усі три; seed — відкритий із конфігу)
               ga                      ГА проти випадкового пошуку, зберегти data/ga_params.json
@@ -68,6 +72,12 @@ void Train()
     Directory.CreateDirectory(Workspace.PathOf("docs", "results"));
     File.WriteAllText(Workspace.PathOf("docs", "results", "confusion.md"), md.ToString());
     Console.WriteLine(md);
+}
+
+void CheckReference()
+{
+    foreach (var (name, ok, detail) in Reference.Check(Workspace.PathOf("reference"), cfg.Password))
+        Console.WriteLine($"{name,-28} {(ok ? "OK     " : "ПОМИЛКА")} {detail}");
 }
 
 void AttackDemo()
