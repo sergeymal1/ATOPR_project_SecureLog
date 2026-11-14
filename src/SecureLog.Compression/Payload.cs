@@ -51,7 +51,7 @@ public static class Payload
         return payload;
     }
 
-    /// <summary>Строгий розбір: будь-яке порушення структури — E_PAYLOAD, помилка таблиці чи бітового потоку Гаффмана — E_CODE.</summary>
+    /// <summary>Строгий розбір: порушення структури чи довжини бітового потоку — E_PAYLOAD, неможлива таблиця довжин або код поза таблицею — E_CODE.</summary>
     public static (byte[] Records, byte[]? ClassTable) Unpack(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < FixedSize) throw Bad("навантаження коротше за обов'язкові поля");

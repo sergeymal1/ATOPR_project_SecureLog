@@ -71,8 +71,9 @@ public class UnitTests
         single['a'] = 2;   // єдиний символ мусить мати довжину 1
         Assert.Equal(ErrorCode.Code, Code(() => Huffman.Decode(single, [0], 1)));
 
-        Assert.Equal(ErrorCode.Code, Code(() => Huffman.Decode(lengths, [.. bits, 0], data.Length)));     // зайвий повний байт
-        Assert.Equal(ErrorCode.Code, Code(() => Huffman.Decode(lengths, bits[..^1], data.Length)));       // потік обірвано
+        // довжина потоку — інваріант навантаження: так і в еталонному bad_07_extra_bitstream
+        Assert.Equal(ErrorCode.Payload, Code(() => Huffman.Decode(lengths, [.. bits, 0], data.Length)));     // зайвий повний байт
+        Assert.Equal(ErrorCode.Payload, Code(() => Huffman.Decode(lengths, bits[..^1], data.Length)));       // потік обірвано
     }
 
     [Fact]

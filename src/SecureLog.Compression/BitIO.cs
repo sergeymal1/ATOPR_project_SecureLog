@@ -39,7 +39,8 @@ public ref struct BitReader(ReadOnlySpan<byte> data)
 
     public int ReadBit()
     {
-        if (Position >= _data.Length * 8) throw new ReplicaException(ErrorCode.Code, "бітовий потік закінчився раніше, ніж очікувалось");
+        // bitstream_len замалий для symbol_count символів — порушено інваріант навантаження, а не таблиця кодів
+        if (Position >= _data.Length * 8) throw new ReplicaException(ErrorCode.Payload, "бітовий потік закінчився раніше, ніж очікувалось");
         int bit = (_data[Position >> 3] >> (7 - (Position & 7))) & 1;
         Position++;
         return bit;

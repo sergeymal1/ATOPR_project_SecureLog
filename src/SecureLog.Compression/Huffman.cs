@@ -134,9 +134,10 @@ public static class Huffman
             if (length > MaxLength) throw new ReplicaException(ErrorCode.Code, "код відсутній у таблиці");
         }
 
-        if ((reader.Position + 7) / 8 != bitstream.Length) throw new ReplicaException(ErrorCode.Code, "зайві байти після закодованих даних");
+        // довжина потоку й доповнення — інваріанти навантаження: еталонний bad_07_extra_bitstream очікує E_PAYLOAD
+        if ((reader.Position + 7) / 8 != bitstream.Length) throw new ReplicaException(ErrorCode.Payload, "зайві байти після закодованих даних");
         while (reader.Position % 8 != 0)
-            if (reader.ReadBit() != 0) throw new ReplicaException(ErrorCode.Code, "ненульове доповнення останнього байта");
+            if (reader.ReadBit() != 0) throw new ReplicaException(ErrorCode.Payload, "ненульове доповнення останнього байта");
         return res;
     }
 }
