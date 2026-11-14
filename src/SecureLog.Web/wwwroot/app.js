@@ -73,7 +73,8 @@ function setKpi(id, value, sub, cls = '') {
 function renderNote() {
   const sc = info.scenarios[scenario];
   $('#note').innerHTML =
-    `<b>${scenario}</b>: місця ×${sc.budgetFactor} від сирого журналу · втрати ${Math.round(sc.loss * 100)} % · пачка втрат ${sc.burst}` +
+    `<b>${scenario}</b>: глобальний бюджет ${kb(sc.globalBudgetBytes)} · ` +
+    sc.nodes.map(n => `${n.name}: відмови ${(n.failureProbability * 100).toFixed(1)} %, пачка ${n.meanFailureBurst}`).join(' · ') +
     `<span class="sep">|</span>параметри ГА: вікно ${info.window}, поріг NO_COMPRESSION ${info.minGain.toFixed(3)}, коефіцієнт другої копії ${info.secondCopyFactor.toFixed(3)}` +
     `<span class="sep">|</span>перцептрон ${info.model ?? 'не навчено — усі події штатні'}`;
 }
@@ -213,7 +214,9 @@ function renderRows() {
 // ── вузли й вікно ──────────────────────────────────────────────
 
 function renderNodes() {
-  $('#nodes').innerHTML = info.reliability.map((rel, k) => {
+  // до першого прогону — вузли обраного сценарію, після — вузли того прогону, чиї числа показано
+  const rels = run ? run.nodes.map(n => n.reliability) : info.scenarios[scenario].nodes.map(n => n.reliabilityWeight);
+  $('#nodes').innerHTML = rels.map((rel, k) => {
     const s = sent[k] ?? { bytes: 0, packets: 0 };
     const cap = run ? run.nodes[k].capacity : 0;
     const pct = cap ? Math.min(100, (s.bytes / cap) * 100) : 0;
@@ -329,6 +332,7 @@ async function init() {
     scenario = b.dataset.v;
     setOn('#scenario', b);
     renderNote();
+    renderNodes();
   });
   $('#filters').addEventListener('click', (e) => {
     const b = e.target.closest('button');

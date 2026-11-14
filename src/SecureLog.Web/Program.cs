@@ -18,7 +18,7 @@ Params best = Workspace.BestParams(cfg);
 LogEvent[]? training = null;
 
 var gate = new Lock();
-SimReplication? nodes = null;   // вузли останнього прогону: їх можна зіпсувати й відновити ще раз
+Replication? nodes = null;   // вузли останнього прогону: їх можна зіпсувати й відновити ще раз
 string runPassword = Workspace.Password;
 
 var app = WebApplication.CreateBuilder(new WebApplicationOptions
@@ -37,7 +37,7 @@ app.MapGet("/api/info", () => new
     best.Window,
     best.MinGain,
     best.SecondCopyFactor,
-    reliability = cfg.NodeReliability,
+    seed = cfg.ReplicationSeed,
     cfg.Scenarios,
 });
 
@@ -46,7 +46,7 @@ app.MapPost("/api/run", (RunRequest req) =>
     if (!cfg.Scenarios.ContainsKey(req.Scenario)) return Results.BadRequest($"невідомий сценарій {req.Scenario}");
     string password = string.IsNullOrEmpty(req.Password) ? Workspace.Password : req.Password;
     var traces = new List<WindowTrace>();
-    var sim = new SimReplication(cfg, req.Scenario, (long)session.Length * EventCodec.RecordSize, req.Seed);
+    var sim = new Replication(cfg, req.Scenario, req.Seed);
     RunResult r = new Pipeline(cfg, model, password).Run(session, sim, new RunOptions(best) { OnWindow = traces.Add });
     lock (gate) (nodes, runPassword) = (sim, password);
 
@@ -70,7 +70,7 @@ app.MapPost("/api/run", (RunRequest req) =>
         nodes = Enumerable.Range(0, sim.NodeCount).Select(k => new
         {
             reliability = sim.Reliability(k),
-            capacity = sim.FreeBytes(k) + sim.Read(k).Sum(p => (long)p.Length),
+            capacity = cfg.Scenarios[req.Scenario].Nodes[k].CapacityBytes,
             stored = sim.Read(k).Count,
         }),
         windows = traces.Select(t => new
@@ -89,7 +89,7 @@ app.MapPost("/api/run", (RunRequest req) =>
 
 app.MapPost("/api/tamper", (TamperRequest req) =>
 {
-    SimReplication? sim;
+    Replication? sim;
     lock (gate) sim = nodes;
     if (sim is null || req.Node < 0 || req.Node >= sim.NodeCount) return Results.BadRequest("немає прогону або такого вузла");
     var stored = sim.Read(req.Node);
@@ -104,7 +104,7 @@ app.MapPost("/api/tamper", (TamperRequest req) =>
 
 app.MapPost("/api/restore", (RestoreRequest req) =>
 {
-    SimReplication? sim;
+    Replication? sim;
     string password;
     lock (gate) (sim, password) = (nodes, runPassword);
     if (sim is null) return Results.BadRequest("спершу запустіть прогін");
@@ -153,8 +153,8 @@ app.MapPost("/api/attack", () =>
 
 app.Run(Environment.GetEnvironmentVariable("SECURELOG_URL") ?? "http://localhost:5080");
 
-static IEnumerable<byte[]> Packets(SimReplication sim) => Enumerable.Range(0, sim.NodeCount).SelectMany(sim.Read);
+static IEnumerable<byte[]> Packets(Replication sim) => Enumerable.Range(0, sim.NodeCount).SelectMany(sim.Read);
 
-record RunRequest(string Scenario, int Seed, string? Password);
+record RunRequest(string Scenario, long Seed, string? Password);
 record TamperRequest(int Node);
 record RestoreRequest(string? Password);
