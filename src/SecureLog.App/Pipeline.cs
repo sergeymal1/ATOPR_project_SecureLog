@@ -90,30 +90,39 @@ public sealed class Pipeline(TeamConfig cfg, Mlp? model, string password)
             int[][] sent = new int[nodeCount][];
             int[] sentBytes = new int[nodeCount];
 
+            var saved = new bool[win.Length];   // подія вже має збережену копію
+            var orphans = new List<int>();      // події з неуспішних batch цього вікна, ще без жодної збереженої копії
+
             // спершу найнадійніший вузол: якщо частка бюджету скінчиться посеред вікна, без копії залишиться найслабший
             foreach (int k in Enumerable.Range(0, nodeCount).OrderByDescending(k => reliability[k]))
             {
-                var batch = batches[k].Select(i => win[i]).ToList();
-                while (batch.Count > 0)
+                // replication.py повідомляє про втрату копії (store() → False), тому такі події переходять у batch наступного вузла,
+                // де їх ще немає (копії однієї події — лише на різних вузлах). Порядок — за цінністю: обрізається найменш цінний хвіст
+                List<int> ids = orphans.Count == 0 ? batches[k]
+                    : orphans.Where(i => !saved[i] && !batches[k].Contains(i)).Concat(batches[k]).OrderByDescending(i => value[i]).ToList();
+                while (ids.Count > 0)
                 {
-                    byte[] packet = Replica.Build(keys, salt, (ushort)w, batchSeq, batch, options.P.MinGain);
+                    byte[] packet = Replica.Build(keys, salt, (ushort)w, batchSeq, ids.Select(i => win[i]).ToList(), options.P.MinGain);
                     if (packet.Length <= Math.Min(Limit(k), share))
                     {
                         // false буває і після списання (копію втрачено у стані BAD), тому облік — за фактично списаними байтами.
                         // Повторно в тому самому вікні на цей вузол не пишемо: не більше одного batch на вузол
                         long before = nodes.UsedBytes;
-                        nodes.Write(k, packet);
+                        bool stored = nodes.Write(k, packet);
                         if (nodes.UsedBytes > before)
                         {
                             share -= packet.Length;
                             batchSeq++;
-                            sent[k] = batches[k].Take(batch.Count).ToArray();
+                            sent[k] = ids.ToArray();
                             sentBytes[k] = packet.Length;
                         }
+                        foreach (int i in ids)
+                            if (stored) saved[i] = true;
+                            else if (!orphans.Contains(i)) orphans.Add(i);
                         break;
                     }
                     // не вмістилось у batch або в частку бюджету — відкидаємо найменш цінний хвіст
-                    batch.RemoveRange(batch.Count * 9 / 10, batch.Count - batch.Count * 9 / 10);
+                    ids.RemoveRange(ids.Count * 9 / 10, ids.Count - ids.Count * 9 / 10);
                 }
                 sent[k] ??= [];
             }
