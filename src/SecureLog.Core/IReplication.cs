@@ -2,7 +2,7 @@ namespace SecureLog.Core;
 
 /// <summary>
 /// Те, що планувальнику й відновлювачу потрібно від моделі вузлів.
-/// Реалізує SimReplication. Інтерфейс відокремлює модель від системи: її можна замінити іншою, не чіпаючи планувальник.
+/// Реалізує Replication — порт виданого replication.py. Інтерфейс відокремлює модель від системи.
 /// </summary>
 public interface IReplication
 {
@@ -16,7 +16,7 @@ public interface IReplication
     double Reliability(int node);
     long FreeBytes(int node);
 
-    /// <summary>false — запис відхилено до списання (бюджет, місткість або розмір batch). Втрата через BAD відправнику не видна.</summary>
+    /// <summary>true — копію збережено; false — відхилено до списання (бюджет, місткість) або втрачено у стані BAD (байти списано).</summary>
     bool Write(int node, byte[] batch);
 
     /// <summary>Копії, що вціліли на вузлі після сценарію відмов.</summary>
