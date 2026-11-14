@@ -135,7 +135,20 @@ public class RoundTripTests
             bad[i] ^= 0x01;
             CodeOf(bad);
         }
-        for (int length = 0; length < file.Length; length++) CodeOf(file[..length]);   // обрізаний файл
+        // обрізаний файл. Зріз рівно на межі реплік лишає цілі репліки — тоді повертається точний початок записів, а не хибні дані
+        var boundaries = new List<int>();
+        for (int pos = 0; pos < file.Length;)
+        {
+            pos += Log3.Overhead + (int)System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(file.AsSpan(pos + Log3.LengthOffset));
+            if (pos < file.Length) boundaries.Add(pos);
+        }
+        Assert.Equal(2, boundaries.Count);
+        for (int length = 0; length < file.Length; length++)
+        {
+            int whole = boundaries.IndexOf(length) + 1;
+            if (whole > 0) Assert.Equal(records[..(whole * 10 * EventCodec.RecordSize)], ReplicaFile.Unpack(file[..length], Ring).Records);
+            else CodeOf(file[..length]);
+        }
         Assert.Equal(ErrorCode.Length, CodeOf([.. file, 0x00]));                      // зайвий байт у кінці
 
         // неможливі значення в полі ciphertext_len першої репліки
