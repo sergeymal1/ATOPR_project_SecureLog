@@ -59,14 +59,14 @@ void Train()
 {
     var (train, trainY) = Workspace.Csv("train.csv");
     var (valid, validY) = Workspace.Csv("valid.csv");
-    var (holdout, holdoutY) = Workspace.Csv("holdout.csv");
-    double[][] trainX = Features.Extract(train, cfg.HistoryWindow), validX = Features.Extract(valid, cfg.HistoryWindow);
+    double[][] trainX = Features.Extract(train, cfg.HistoryMs), validX = Features.Extract(valid, cfg.HistoryMs);
     var (model, f1) = Mlp.TrainBest(trainX, trainY, validX, validY, cfg.Hidden, log: Console.WriteLine);
     model.Save(Workspace.PathOf("data", "model.json"));
 
-    // holdout не брав участі ні в навчанні, ні у виборі моделі, тому оцінка на ньому не завищена
-    int[,] cm = model.Confusion(Features.Extract(holdout, cfg.HistoryWindow), holdoutY);
-    var md = new StringBuilder($"# Перцептрон: матриця помилок на holdout.csv\n\nmacro-F1 на holdout = {Mlp.MacroF1(cm):F4} (поріг F1_min = {cfg.F1Min}); на valid, за яким обрано модель, — {f1:F4}. Шари: {string.Join(" → ", model.Sizes)}\n\n");
+    // holdout.csv викладач не видає: матриця — на valid.csv, за яким обрано модель з трьох, тому оцінка трохи оптимістична
+    int[,] cm = model.Confusion(validX, validY);
+    var md = new StringBuilder($"# Перцептрон: матриця помилок на valid.csv\n\nmacro-F1 на valid = {f1:F4} (поріг F1_min = {cfg.F1Min}; базові лінії: мажоритарний клас 0.293, випадковий вибір 0.312). ");
+    md.Append($"Підсумковий macro-F1 викладач рахує на прихованому holdout.csv. Шари: {string.Join(" → ", model.Sizes)}, вікно історії {cfg.HistoryMs} мс\n\n");
     md.Append("| справжній \\ передбачений | 0 | 1 | 2 |\n|---|---|---|---|\n");
     for (int c = 0; c < 3; c++) md.Append($"| {c} | {cm[c, 0]} | {cm[c, 1]} | {cm[c, 2]} |\n");
     Directory.CreateDirectory(Workspace.PathOf("docs", "results"));
