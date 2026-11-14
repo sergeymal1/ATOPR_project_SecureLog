@@ -39,19 +39,23 @@ public static class Report
             md.Append($"| emergency, бюджет −30 % | {tight.Count} | {dp.Utility:F1} | {greedy.Utility:F1} | {dp.Bits} | {greedy.Bits} | {dp.Ms:F1} | {greedy.Ms:F1} |\n");
         }
 
-        md.Append("\n## 2. Вплив кількості копій\n\n| сценарій | макс. копій | S | R | Q | збережено, кбіт |\n|---|---|---|---|---|---|\n");
-        foreach (string scenario in Tuning.Scenarios)
-            for (int copies = 1; copies <= 3; copies++)
-            {
-                var m = Mean(pipeline, events, scenario, full with { MaxCopies = copies });
-                md.Append($"| {scenario} | {copies} | {m.S:F3} | {m.R:F3} | {m.Q:F3} | {m.StoredBits / 1000:F0} |\n");
-            }
+        // ремонт сам замінює втрачену копію, тому чистий ефект копій видно без нього; у штатному сценарії втрат майже немає
+        md.Append("\n## 2. Вплив кількості копій\n\n| параметри | ремонт | сценарій | макс. копій | S | R | Q | збережено, кбіт |\n|---|---|---|---|---|---|---|---|\n");
+        foreach (var (name, p) in new[] { ("ГА", tuned), ("конфіг", cfg.DefaultParams()) })
+            foreach (bool repair in new[] { true, false })
+                foreach (string scenario in Tuning.Scenarios.Skip(1))
+                    for (int copies = 1; copies <= 3; copies++)
+                    {
+                        var m = Mean(pipeline, events, scenario, new RunOptions(p, MaxCopies: copies) { Repair = repair });
+                        md.Append($"| {name} | {(repair ? "так" : "ні")} | {scenario} | {copies} | {m.S:F3} | {m.R:F3} | {m.Q:F3} | {m.StoredBits / 1000:F0} |\n");
+                    }
 
         md.Append("\n## 3. Вплив блоків (Q)\n\n| конфігурація | normal | degraded | emergency | середнє |\n|---|---|---|---|---|\n");
         var variants = new (string Name, RunOptions Options)[]
         {
             ("без перцептрона", full with { UseMlp = false }),
             ("без ДП (жадібний вибір копій)", full with { UseDp = false }),
+            ("без ремонту втрачених batch", full with { Repair = false }),
             ("без ГА (параметри з team_config.json)", new RunOptions(cfg.DefaultParams())),
             ("повна система", full),
         };
