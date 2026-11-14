@@ -33,7 +33,9 @@ public static class Reference
             res.Add(new(name, error is null, error ?? "записи, таблиця, коди й потік збігаються; наш передавач збирає той самий пакет байт у байт"));
         }
 
-        using var failures = JsonDocument.Parse(File.ReadAllText(Path.Combine(dir, "expected_failures.json")));
+        string expectedPath = Path.Combine(dir, "expected_failures.json");
+        if (!File.Exists(expectedPath)) return res;
+        using var failures = JsonDocument.Parse(File.ReadAllText(expectedPath));
         var ring = new KeyRing(password);
         foreach (JsonProperty file in failures.RootElement.EnumerateObject())
         {

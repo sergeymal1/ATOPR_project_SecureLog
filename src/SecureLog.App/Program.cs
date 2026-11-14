@@ -11,8 +11,33 @@ Console.OutputEncoding = Encoding.UTF8;
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;   // десяткова крапка у всіх таблицях і CSV
 
 TeamConfig cfg = Workspace.Config();
+string password = Option("--password") ?? Workspace.Password;
+try
+{
+    Dispatch();
+}
+catch (ReplicaException e)
+{
+    // зіпсований чи чужий файл — очікувана ситуація, а не аварія: код із розділу 5 і код виходу 1
+    Console.Error.WriteLine($"ВІДХИЛЕНО {e.Code}: {e.Detail}. Вихідний файл не записано.");
+    Environment.ExitCode = 1;
+}
+catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException or FormatException or ArgumentException)
+{
+    Console.Error.WriteLine($"помилка: {e.Message}");
+    Environment.ExitCode = 2;
+}
+
+void Dispatch()
+{
 switch (args.FirstOrDefault())
 {
+    case "pack":
+        PackFile();
+        break;
+    case "unpack":
+        UnpackFile();
+        break;
     case "check":
         CheckReference();
         break;
@@ -38,7 +63,10 @@ switch (args.FirstOrDefault())
     default:
         Console.WriteLine("""
             SecureLog — пріоритетна реплікація журналів подій
-              check                   прочитати всі еталонні пакети викладача з reference/
+              pack <вхід> <репліка> [--raw]     записи (.bin по 16 байтів або .csv) → файл реплік LOG3; --raw — NO_COMPRESSION
+              unpack <репліка> <вихід>          файл реплік LOG3 → записи (.bin побайтово або .csv); помилка — код E_*
+              check [каталог]                   звірити еталонні пакети викладача (типово reference/)
+                                                у pack, unpack і check: --password <пароль>, типово пароль сеансу з team_config.json
               train                   навчити перцептрон (3 ініціалізації), зберегти data/model.json
               run [сценарій] [seed]   повний прогін: normal | degraded | emergency (без аргументів — усі три; seed — відкритий із конфігу)
               ga                      ГА проти випадкового пошуку, зберегти data/ga_params.json
@@ -46,6 +74,43 @@ switch (args.FirstOrDefault())
               report                  таблиці експериментів у docs/results/tables.md
             """);
         break;
+}
+}
+
+// --password <значення>; позиційні аргументи — усе інше після назви команди
+string? Option(string name)
+{
+    int i = Array.IndexOf(args, name);
+    return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+}
+
+string[] Positional() =>
+    args.Skip(1).Where((a, i) => !a.StartsWith("--") && (i == 0 || args[i] != "--password")).ToArray();
+
+(string In, string Out) TwoPaths(string command)
+{
+    string[] p = Positional();
+    if (p.Length != 2) throw new ArgumentException($"потрібно два шляхи: {command} <вхід> <вихід>");
+    return (p[0], p[1]);
+}
+
+void PackFile()
+{
+    var (input, output) = TwoPaths("pack");
+    byte[] records = ReplicaFile.ReadRecords(input);
+    byte[] file = ReplicaFile.Pack(records, password, args.Contains("--raw"));
+    File.WriteAllBytes(output, file);
+    int count = records.Length / EventCodec.RecordSize;
+    Console.WriteLine($"{input}: {count} записів ({records.Length} байтів) → {output}: {file.Length} байтів, реплік {Math.Max(1, (count + ReplicaFile.MaxRecords - 1) / ReplicaFile.MaxRecords)}");
+}
+
+void UnpackFile()
+{
+    var (input, output) = TwoPaths("unpack");
+    var (records, parts) = ReplicaFile.Unpack(File.ReadAllBytes(input), password);
+    ReplicaFile.WriteRecords(output, records);
+    string modes = string.Join(", ", parts.Select(p => (p.Compressed ? "Гаффман" : "NO_COMPRESSION") + (p.HasClassTable ? " + class_table" : "")).Distinct());
+    Console.WriteLine($"OK: реплік {parts.Count} ({modes}), записів {records.Length / EventCodec.RecordSize} ({records.Length} байтів) → {output}");
 }
 
 Pipeline NewPipeline()
@@ -76,8 +141,12 @@ void Train()
 
 void CheckReference()
 {
-    foreach (var (name, ok, detail) in Reference.Check(Workspace.PathOf("reference"), cfg.Password))
+    string[] p = Positional();
+    var verdicts = Reference.Check(p.Length > 0 ? p[0] : Workspace.PathOf("reference"), password);
+    foreach (var (name, ok, detail) in verdicts)
         Console.WriteLine($"{name,-28} {(ok ? "OK     " : "ПОМИЛКА")} {detail}");
+    Console.WriteLine($"пройдено {verdicts.Count(v => v.Ok)} з {verdicts.Count}");
+    if (verdicts.Any(v => !v.Ok)) Environment.ExitCode = 1;
 }
 
 void AttackDemo()
