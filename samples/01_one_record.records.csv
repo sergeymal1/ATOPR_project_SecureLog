@@ -1,0 +1,2 @@
+timestamp_ms,source_id,event_code,metric_value,category,severity,critical,record_flags
+1373,106,122,3429,15,1,1,3
