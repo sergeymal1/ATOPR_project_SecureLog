@@ -227,7 +227,7 @@ function renderNodes() {
         (tampered[k] ? ` · <span class="bad">зіпсовано ${tampered[k]}</span>` : '') + '</div>';
     }
     return `<div class="node n${k}">
-      <div class="node-top"><span class="dot"></span><b>${NODES[k]}</b><span class="muted">надійність ${rel.toFixed(2)}</span></div>
+      <div class="node-top"><span class="dot"></span><b>${NODES[k]}</b><span class="muted">надійність ${rel.toFixed(3)}</span></div>
       <div class="bar"><i style="width:${pct.toFixed(1)}%"></i></div>
       <div class="node-stats"><span>${kb(s.bytes)}${cap ? ` / ${kb(cap)}` : ''}</span><span>пакетів ${s.packets}</span></div>
       ${after}
