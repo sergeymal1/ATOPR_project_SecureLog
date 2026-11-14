@@ -12,8 +12,8 @@ public static class Workspace
 
     public static string PathOf(params string[] parts) => Path.Combine([Root, .. parts]);
 
-    /// <summary>Пароль береться зі змінної середовища; запасне значення — лише для навчальних прогонів.</summary>
-    public static string Password => Environment.GetEnvironmentVariable("SECURELOG_PASSWORD") ?? "securelog-demo";
+    /// <summary>Пароль сеансу з team_config.json; змінна середовища SECURELOG_PASSWORD його перекриває.</summary>
+    public static string Password => Environment.GetEnvironmentVariable("SECURELOG_PASSWORD") ?? Config().Password;
 
     public static TeamConfig Config() => TeamConfig.Load(PathOf("team_config.json"));
 

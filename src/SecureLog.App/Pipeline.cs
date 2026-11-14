@@ -30,8 +30,8 @@ public sealed record RunResult(Quality Quality, long RawBits, long StoredBits, i
 /// <summary>Повний прогін: агент журналу → планувальник реплікації → вузли → відновлювач → метрика Q.</summary>
 public sealed class Pipeline(TeamConfig cfg, Mlp? model, string password)
 {
-    public RunResult RunSim(LogEvent[] events, string scenario, int seed, RunOptions options) =>
-        Run(events, new SimReplication(cfg, scenario, (long)events.Length * EventCodec.RecordSize, seed), options);
+    public RunResult RunSim(LogEvent[] events, string scenario, long seed, RunOptions options) =>
+        Run(events, new Replication(cfg, scenario, seed), options);
 
     public RunResult Run(LogEvent[] events, IReplication nodes, RunOptions options)
     {
@@ -122,7 +122,7 @@ public sealed class Pipeline(TeamConfig cfg, Mlp? model, string password)
     private int[] Classify(LogEvent[] events, bool useModel)
     {
         if (!useModel || model is null) return new int[events.Length];   // без перцептрона всі події вважаються штатними
-        return Features.Extract(events, cfg.HistoryWindow).Select(model.Predict).ToArray();
+        return Features.Extract(events, cfg.HistoryMs).Select(model.Predict).ToArray();
     }
 
     /// <summary>

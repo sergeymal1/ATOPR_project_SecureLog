@@ -22,7 +22,7 @@ switch (args.FirstOrDefault())
     case "run":
         foreach (string scenario in args.Length > 1 ? [args[1]] : Tuning.Scenarios)
         {
-            var r = NewPipeline().RunSim(Workspace.Session(), scenario, args.Length > 2 ? int.Parse(args[2]) : 1, new RunOptions(Workspace.BestParams(cfg)));
+            var r = NewPipeline().RunSim(Workspace.Session(), scenario, args.Length > 2 ? long.Parse(args[2]) : cfg.ReplicationSeed, new RunOptions(Workspace.BestParams(cfg)));
             Console.WriteLine($"{scenario,-10} S={r.Quality.S:F3} R={r.Quality.R:F3} T={r.Quality.T:F3} Q={r.Quality.Q:F4} | критичних {r.CriticalRestored}/{r.CriticalTotal}, подій відновлено {r.Restored}, збережено {r.StoredBits / 8} байт, {r.Seconds:F2} с");
         }
         break;
@@ -40,7 +40,7 @@ switch (args.FirstOrDefault())
             SecureLog — пріоритетна реплікація журналів подій
               gen                     згенерувати дані й еталонні репліки (data/, reference/)
               train                   навчити перцептрон (3 ініціалізації), зберегти data/model.json
-              run [сценарій] [seed]   повний прогін: normal | degraded | emergency (без аргументів — усі три)
+              run [сценарій] [seed]   повний прогін: normal | degraded | emergency (без аргументів — усі три; seed — відкритий із конфігу)
               ga                      ГА проти випадкового пошуку, зберегти data/ga_params.json
               attack                  атака ГА на слабкий шифр і перевірка цілісності репліки
               report                  таблиці експериментів у docs/results/tables.md

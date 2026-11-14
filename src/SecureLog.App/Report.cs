@@ -26,7 +26,7 @@ public static class Report
         foreach (string scenario in Tuning.Scenarios)
         {
             var instances = new List<(int[] Cost, double[][] Utility, int Budget)>();
-            pipeline.RunSim(events, scenario, 1, full with { OnKnapsack = (c, u, b) => instances.Add((c, u, b)) });
+            pipeline.RunSim(events, scenario, cfg.ReplicationSeed, full with { OnKnapsack = (c, u, b) => instances.Add((c, u, b)) });
             var dp = Solve(instances, Knapsack.SolveDp);
             var greedy = Solve(instances, Knapsack.SolveGreedy);
             md.Append($"| {scenario} | {instances.Count} | {dp.Utility:F1} | {greedy.Utility:F1} | {dp.Bits} | {greedy.Bits} | {dp.Ms:F1} | {greedy.Ms:F1} |\n");
@@ -75,7 +75,7 @@ public static class Report
         foreach (string scenario in Tuning.Scenarios)
         {
             var m = Mean(pipeline, events, scenario, full);
-            double budgetBits = 8 * cfg.Scenarios[scenario].BudgetFactor * raw.Length;
+            double budgetBits = 8.0 * cfg.Scenarios[scenario].GlobalBudgetBytes;
             md.Append($"| {scenario} | {m.S:F3} | {m.R:F3} | {m.T:F3} | {m.Q:F3} | {100 * m.StoredBits / budgetBits:F0} | {m.Restored:F0} | {m.Rejected:F0} |\n");
         }
 
