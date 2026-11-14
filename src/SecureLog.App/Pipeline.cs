@@ -11,6 +11,9 @@ namespace SecureLog.App;
 /// <summary>Перемикачі блоків для експериментів «з блоком / без блоку».</summary>
 public sealed record RunOptions(Params P, bool UseMlp = true, bool UseDp = true, int MaxCopies = 3)
 {
+    /// <summary>Перекладати події з втраченого batch на наступний вузол того самого вікна.</summary>
+    public bool Repair { get; init; } = true;
+
     /// <summary>Отримує кожен екземпляр рюкзака (ваги в бітах, корисності, бюджет) — для порівняння ДП із жадібним.</summary>
     public Action<int[], double[][], int>? OnKnapsack { get; init; }
 
@@ -118,7 +121,7 @@ public sealed class Pipeline(TeamConfig cfg, Mlp? model, string password)
                         }
                         foreach (int i in ids)
                             if (stored) saved[i] = true;
-                            else if (!orphans.Contains(i)) orphans.Add(i);
+                            else if (options.Repair && !orphans.Contains(i)) orphans.Add(i);
                         break;
                     }
                     // не вмістилось у batch або в частку бюджету — відкидаємо найменш цінний хвіст

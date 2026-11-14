@@ -31,7 +31,9 @@ public class D1Tests
         TeamConfig cfg = Workspace.Config();
         var pipeline = new Pipeline(cfg, Workspace.Model(), "d1-password");
         LogEvent[] session = Workspace.Session();
-        var options = new RunOptions(Workspace.BestParams(cfg));
+        // чистий ефект копій: вікно 48 записів із конфігу і без ремонту втрачених batch — ремонт сам замінює втрачену копію,
+        // і з ним R від кількості копій майже не залежить (таблиця 2 у docs/results/tables.md)
+        var options = new RunOptions(cfg.DefaultParams()) { Repair = false };
 
         (double R, double Bits) Mean(int copies)
         {
