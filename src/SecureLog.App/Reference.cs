@@ -8,7 +8,7 @@ namespace SecureLog.App;
 
 /// <summary>
 /// Звірка з еталонними пакетами викладача (reference/). Для ref_* відновлювач має дати ті самі записи, flags, таблицю,
-/// коди й бітовий потік, що в .json, а передавач — зібрати з тих самих даних, солі й nonce байт у байт той самий пакет.
+/// коди й бітовий потік, що в .json, а наш передавач — зібрати з тих самих записів, солі й nonce байт у байт той самий пакет.
 /// Для bad_* відновлювач має відхилити пакет з кодом з expected_failures.json.
 /// </summary>
 public static class Reference
@@ -30,7 +30,7 @@ public static class Reference
             {
                 error = $"еталонний пакет відхилено: {e.Message}";
             }
-            res.Add(new(name, error is null, error ?? "записи, таблиця, коди, потік і повторно зібраний пакет збігаються"));
+            res.Add(new(name, error is null, error ?? "записи, таблиця, коди й потік збігаються; наш передавач збирає той самий пакет байт у байт"));
         }
 
         using var failures = JsonDocument.Parse(File.ReadAllText(Path.Combine(dir, "expected_failures.json")));
@@ -94,11 +94,12 @@ public static class Reference
         foreach (var (symbol, length, code) in codes)
             if (Convert.ToString(canonical[symbol], 2).PadLeft(length, '0') != code) return $"канонічний код символу {symbol} відрізняється";
 
-        byte[] raw = EventCodec.Encode(events);
-        if ((flags & Payload.NoCompression) == 0 && !Huffman.Encode(raw, lengths).SequenceEqual(bitstream)) return "кодер дав інший потік за тією самою таблицею";
+        // наш передавач з тих самих записів; режим — як у викладача: −10 примушує Гаффмана, 1 — NO_COMPRESSION
+        byte[] ours = Payload.Pack(EventCodec.Encode(events), (flags & Payload.NoCompression) != 0 ? 1 : -10, classTable);
+        if (!ours.SequenceEqual(payload)) return "наш кодер дав інше навантаження (інші довжини кодів або потік)";
 
         byte[] salt = Convert.FromHexString(meta.GetProperty("salt_hex").GetString()!), nonce = Convert.FromHexString(meta.GetProperty("nonce_hex").GetString()!);
-        byte[] sealedAgain = Log3.Seal(keys.Get(salt), salt, groupId, batchSeq, payload, nonce);
+        byte[] sealedAgain = Log3.Seal(keys.Get(salt), salt, groupId, batchSeq, ours, nonce);
         return sealedAgain.SequenceEqual(packet) ? null : "повторно зібраний пакет відрізняється (шифрування або HMAC)";
     }
 }
