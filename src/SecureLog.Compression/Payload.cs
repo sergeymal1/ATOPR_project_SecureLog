@@ -30,7 +30,7 @@ public static class Payload
         byte[] bitstream = Huffman.Encode(records, lengths);
 
         byte flags = classTable is null ? (byte)0 : ClassTable;
-        if (table.Length + bitstream.Length > records.Length * (1 - minGain))
+        if (minGain >= 1 || table.Length + bitstream.Length > records.Length * (1 - minGain))
         {
             flags |= NoCompression;
             table = [];
