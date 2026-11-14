@@ -63,15 +63,15 @@ switch (args.FirstOrDefault())
     default:
         Console.WriteLine("""
             SecureLog — пріоритетна реплікація журналів подій
-              pack <вхід> <репліка> [--raw]     записи (.bin по 16 байтів або .csv) → файл реплік LOG3; --raw — NO_COMPRESSION
-              unpack <репліка> <вихід>          файл реплік LOG3 → записи (.bin побайтово або .csv); помилка — код E_*
-              check [каталог]                   звірити еталонні пакети викладача (типово reference/)
-                                                у pack, unpack і check: --password <пароль>, типово пароль сеансу з team_config.json
-              train                   навчити перцептрон (3 ініціалізації), зберегти data/model.json
-              run [сценарій] [seed]   повний прогін: normal | degraded | emergency (без аргументів — усі три; seed — відкритий із конфігу)
-              ga                      ГА проти випадкового пошуку, зберегти data/ga_params.json
-              attack                  атака ГА на слабкий шифр і перевірка цілісності репліки
-              report                  таблиці експериментів у docs/results/tables.md
+              pack <вхід> <репліка> [--raw]   записи (.bin по 16 байтів або .csv) → файл реплік LOG3; --raw — NO_COMPRESSION
+              unpack <репліка> <вихід>        файл реплік LOG3 → записи (.bin побайтово або .csv); помилка — код E_*
+              check [каталог]                 звірити еталонні пакети викладача (типово reference/)
+                                              pack, unpack, check: --password <пароль>, типово пароль сеансу з team_config.json
+              train                           навчити перцептрон (3 ініціалізації), зберегти data/model.json
+              run [сценарій] [seed]           повний прогін: normal | degraded | emergency (без аргументів — усі три; seed — відкритий із конфігу)
+              ga                              ГА проти випадкового пошуку, зберегти data/ga_params.json
+              attack                          атака ГА на слабкий шифр і перевірка цілісності репліки
+              report                          таблиці експериментів у docs/results/tables.md
             """);
         break;
 }
