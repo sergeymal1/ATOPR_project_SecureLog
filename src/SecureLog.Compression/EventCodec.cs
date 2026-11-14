@@ -32,6 +32,7 @@ public static class EventCodec
         return raw;
     }
 
+    /// <summary>Розбирає записи й перевіряє діапазони полів з розділу 1; запис поза ними — E_PAYLOAD.</summary>
     public static LogEvent[] Decode(ReadOnlySpan<byte> raw)
     {
         if (raw.Length % RecordSize != 0) throw new ReplicaException(ErrorCode.Payload, "довжина журналу не кратна розміру запису");
@@ -39,8 +40,13 @@ public static class EventCodec
         for (int i = 0; i < events.Length; i++)
         {
             var s = raw.Slice(i * RecordSize, RecordSize);
-            // інакше запис не відтворився б байт у байт: bool зберігає лише 0 або 1
-            if (s[14] > 1) throw new ReplicaException(ErrorCode.Payload, "поле critical має бути 0 або 1");
+            string? bad = BinaryPrimitives.ReadUInt16BigEndian(s[4..]) is 0 or > 4095 ? "source_id поза 1…4095"
+                : s[12] > 15 ? "category поза 0…15"
+                : s[13] > 7 ? "severity поза 0…7"
+                : s[14] > 1 ? "critical не 0 і не 1"   // інакше запис не відтворився б байт у байт: bool зберігає лише 0 або 1
+                : s[15] > 3 ? "record_flags поза 0…3"
+                : null;
+            if (bad is not null) throw new ReplicaException(ErrorCode.Payload, $"запис {i}: {bad}");
             events[i] = new LogEvent(
                 BinaryPrimitives.ReadUInt32BigEndian(s),
                 BinaryPrimitives.ReadUInt16BigEndian(s[4..]),
@@ -72,7 +78,7 @@ public static class EventCodec
                 int.Parse(f[column["metric_value"]], inv),
                 byte.Parse(f[column["category"]], inv),
                 byte.Parse(f[column["severity"]], inv),
-                f[column["critical"]].Trim() == "1",
+                f[column["critical"]].Trim() switch { "0" => false, "1" => true, var v => throw new FormatException($"critical = {v}, а має бути 0 або 1") },
                 byte.Parse(f[column["record_flags"]], inv)));
             labels.Add(column.TryGetValue("label", out int li) ? int.Parse(f[li], inv) : -1);
         }
