@@ -2,64 +2,55 @@ using SecureLog.Core;
 
 namespace SecureLog.ML;
 
-/// <summary>Ознаки для класифікації подій: миттєві та часові, пораховані за вікном історії.</summary>
+/// <summary>Ознаки для класифікації подій: мінімальний набір часових ознак із team_config.json і кілька допоміжних.</summary>
 public static class Features
 {
-    public const int Count = 13;
-
     /// <summary>
-    /// Для події t береться вікно [t−window+1, t]. Клас 1 видно з миттєвих ознак (severity, стрибок metric),
-    /// клас 2 — лише з часових: потік частішає, category і джерела стрибають, коди йдуть спорідненою серією.
+    /// Для події t вікно історії — події за останні windowMs мілісекунд, включно з нею (лише минуле: агент класифікує потік).
+    /// Клас 1 видно з severity і стрибка metric_value, клас 2 — з часової структури: потік частішає,
+    /// category і джерела змінюються, event_code іде серією сусідніх кодів.
     /// </summary>
-    public static double[][] Extract(IReadOnlyList<LogEvent> events, int window)
+    public static double[][] Extract(IReadOnlyList<LogEvent> events, int windowMs)
     {
         var res = new double[events.Count][];
-        var categories = new HashSet<int>();
-        var sources = new HashSet<int>();
-        var codes = new HashSet<int>();
+        var lastMetric = new Dictionary<ushort, int>();   // попередній metric_value кожного джерела
+        var sources = new HashSet<ushort>();
+        int from = 0;
         for (int t = 0; t < events.Count; t++)
         {
             var cur = events[t];
-            int from = Math.Max(0, t - window + 1), n = t - from + 1;
-            categories.Clear();
+            while (cur.Time - events[from].Time >= windowMs) from++;
+            int n = t - from + 1;
+
             sources.Clear();
-            codes.Clear();
-            double sum = 0, sumSq = 0, severitySum = 0;
-            int switches = 0, nearCodes = 0;
+            int categoryChanges = 0, nearCodes = 0, severitySum = 0;
             for (int j = from; j <= t; j++)
             {
                 var e = events[j];
-                categories.Add(e.Category);
                 sources.Add(e.Source);
-                codes.Add(e.Code);
-                sum += e.Metric;
-                sumSq += (double)e.Metric * e.Metric;
                 severitySum += e.Severity;
-                if (j > from && e.Category != events[j - 1].Category) switches++;
-                if (Math.Abs(e.Code - cur.Code) <= 3) nearCodes++;
+                if (j == from) continue;
+                if (e.Category != events[j - 1].Category) categoryChanges++;
+                if (Math.Abs(e.Code - events[j - 1].Code) == 1) nearCodes++;
             }
-            double mean = sum / n, std = Math.Sqrt(Math.Max(0, sumSq / n - mean * mean));
 
-            // середній інтервал між подіями за все вікно і за його останню чверть: їхня різниця показує прискорення потоку
-            int quarter = Math.Max(from, t - Math.Max(1, window / 4));
-            double gapLong = n > 1 ? ((double)cur.Time - events[from].Time) / (n - 1) : 0;
-            double gapShort = t > quarter ? ((double)cur.Time - events[quarter].Time) / (t - quarter) : gapLong;
+            double gap = t > 0 ? cur.Time - events[t - 1].Time : windowMs;
+            double metricJump = lastMetric.TryGetValue(cur.Source, out int previous) ? Math.Abs(cur.Metric - previous) : 0;
+            lastMetric[cur.Source] = cur.Metric;
 
             res[t] =
             [
+                // сім обов'язкових ознак у порядку team_config.json
+                Math.Log(1 + gap),                       // інтервал до попередньої події
+                n,                                       // кількість подій у ковзному вікні часу
+                categoryChanges,                         // кількість змін category у вікні
+                sources.Count,                           // кількість різних source_id у вікні
+                n > 1 ? (double)nearCodes / (n - 1) : 0, // частка пар сусідніх подій із event_code, що різняться на 1
+                Math.Log(1 + metricJump),                // зміна metric_value відносно попередньої події того самого джерела
                 cur.Severity,
-                cur.Metric,
-                t > 0 ? Math.Abs(cur.Metric - events[t - 1].Metric) : 0,
-                Math.Abs(cur.Metric - mean) / (std + 1e-9),
-                Math.Log(1 + Math.Max(0, gapLong)),
-                Math.Log(1 + Math.Max(0, gapShort)) - Math.Log(1 + Math.Max(0, gapLong)),
-                (double)categories.Count / n,
-                (double)switches / n,
-                (double)sources.Count / n,
-                (double)codes.Count / n,
-                (double)nearCodes / n,
-                severitySum / n,
-                cur.Critical ? 1 : 0,
+                // допоміжні
+                (double)severitySum / n,                 // аномалії йдуть короткими серіями з високою severity
+                Math.Abs(cur.Code - (t > 0 ? events[t - 1].Code : cur.Code)) == 1 ? 1 : 0,
             ];
         }
         return res;
