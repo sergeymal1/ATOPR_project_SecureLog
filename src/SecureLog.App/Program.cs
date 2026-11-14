@@ -13,9 +13,6 @@ CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;   // десятков
 TeamConfig cfg = Workspace.Config();
 switch (args.FirstOrDefault())
 {
-    case "gen":
-        Gen.All();
-        break;
     case "train":
         Train();
         break;
@@ -38,7 +35,6 @@ switch (args.FirstOrDefault())
     default:
         Console.WriteLine("""
             SecureLog — пріоритетна реплікація журналів подій
-              gen                     згенерувати дані й еталонні репліки (data/, reference/)
               train                   навчити перцептрон (3 ініціалізації), зберегти data/model.json
               run [сценарій] [seed]   повний прогін: normal | degraded | emergency (без аргументів — усі три; seed — відкритий із конфігу)
               ga                      ГА проти випадкового пошуку, зберегти data/ga_params.json

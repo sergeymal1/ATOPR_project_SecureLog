@@ -7,7 +7,7 @@ using SecureLog.Security;
 
 namespace SecureLog.Tests.Unit;
 
-/// <summary>Малі перевірки окремих алгоритмів; файлів даних не потребують.</summary>
+/// <summary>Малі перевірки окремих алгоритмів; із файлів беруть лише видані team_config.json і CSV.</summary>
 public class UnitTests
 {
     [Theory]   // RFC 3686, тест-вектори 7 і 9: блок лічильника nonce(4) || IV(8) || uint32_BE, що починається з 1
@@ -78,7 +78,7 @@ public class UnitTests
     [Fact]
     public void Payload_RejectsBrokenInvariants()
     {
-        byte[] raw = EventCodec.Encode(Gen.Events(20, 7).Events);
+        byte[] raw = EventCodec.Encode(Workspace.Session()[..20]);
         byte[] payload = Payload.Pack(raw, minGain: -10);
         int counts = 6 + 2 * ((payload[4] << 8) | payload[5]);
         string Code(byte[] p) => Assert.Throws<ReplicaException>(() => Payload.Unpack(p)).Code;
@@ -219,8 +219,8 @@ public class UnitTests
     [Fact]
     public void Attack_GaRecoversWeakCipherKey()
     {
-        byte[] training = EventCodec.Encode(Gen.Events(3000, 6).Events);
-        byte[] plain = EventCodec.Encode(Gen.Events(1000, 5).Events);
+        byte[] training = EventCodec.Encode(Workspace.Csv("train.csv").Events);
+        byte[] plain = EventCodec.Encode(Workspace.Session()[..1000]);
         // довжина ключа взаємно проста з розміром запису (16): так кожен байт ключа зустрічає всі поля запису
         byte[] key = [0x3A, 0xC1, 0x07, 0xEE, 0x52, 0x99, 0x10];
 
