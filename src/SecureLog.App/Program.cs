@@ -45,7 +45,7 @@ switch (args.FirstOrDefault())
         Train();
         break;
     case "run":
-        foreach (string scenario in args.Length > 1 ? [args[1]] : Tuning.Scenarios)
+        foreach (string scenario in args.Length > 1 ? [KnownScenario(args[1])] : Tuning.Scenarios)
         {
             var r = NewPipeline().RunSim(Workspace.Session(), scenario, args.Length > 2 ? long.Parse(args[2]) : cfg.ReplicationSeed, new RunOptions(Workspace.BestParams(cfg)));
             Console.WriteLine($"{scenario,-10} S={r.Quality.S:F3} R={r.Quality.R:F3} T={r.Quality.T:F3} Q={r.Quality.Q:F4} | критичних {r.CriticalRestored}/{r.CriticalTotal}, подій відновлено {r.Restored}, збережено {r.StoredBits / 8} байт, {r.Seconds:F2} с");
@@ -164,3 +164,7 @@ void AttackDemo()
     var (events, rejected) = Restorer.Restore([replica], new KeyRing(Workspace.Password));
     Console.WriteLine($"змінено 1 біт шифротексту: відхилено реплік {rejected}, прийнято подій {events.Length}");
 }
+
+// невідома назва — зрозуміле повідомлення і код виходу 2, а не KeyNotFoundException зі стеком
+string KnownScenario(string name) =>
+    cfg.Scenarios.ContainsKey(name) ? name : throw new ArgumentException($"невідомий сценарій {name}: normal | degraded | emergency");
