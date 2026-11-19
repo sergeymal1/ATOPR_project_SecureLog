@@ -9,7 +9,7 @@ namespace SecureLog.App;
 public static class Tuning
 {
     public static readonly string[] Scenarios = ["normal", "degraded", "emergency"];
-    // не перетинаються із seeds, на яких система оцінюється (тести — 1–5, звіт — 21–40): так видно, чи узагальнюються параметри
+    // не перетинаються із seeds, на яких система оцінюється (тести — 427243 і 1–5, звіт — 21–40): так видно, чи узагальнюються параметри
     private static readonly int[] FitnessSeeds = [11, 12, 13, 14, 15, 16, 17, 18];
 
     /// <summary>
